@@ -1,0 +1,42 @@
+_schema-version: "3.1"
+ID: my-python-app
+version: 1.0.0
+
+modules:
+  - name: my-python-backend
+    type: python
+    path: python
+    parameters:
+      memory: 256M
+      buildpack: python_buildpack
+      stack: cflinuxfs5
+      command: gunicorn server:app --bind 0.0.0.0:$PORT --access-logfile -
+    provides:
+      - name: backend-api
+        properties:
+          url: ${default-url}
+    requires:
+      - name: my-python-xsuaa
+
+  - name: my-python-approuter
+    type: approuter.nodejs
+    path: approuter
+    parameters:
+      memory: 256M
+      stack: cflinuxfs5
+    requires:
+      - name: my-python-xsuaa
+      - name: backend-api
+        group: destinations
+        properties:
+          name: backend
+          url: ~{url}
+          forwardAuthToken: true
+
+resources:
+  - name: my-python-xsuaa
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: xsuaa
+      service-plan: application
+      path: ./xs-security.json
