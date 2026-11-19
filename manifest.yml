@@ -1,0 +1,10 @@
+---
+applications:
+- name: my-python-app
+  random-route: true
+  path: ./
+  memory: 128M
+  stack: cflinuxfs5
+  buildpacks:
+  - python_buildpack
+  command: gunicorn server:app --bind 0.0.0.0:$PORT
