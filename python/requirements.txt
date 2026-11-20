@@ -2,3 +2,4 @@ Flask
 gunicorn
 cfenv
 sap-xssec
+hdbcli

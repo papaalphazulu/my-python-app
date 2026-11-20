@@ -18,6 +18,11 @@
     #result { margin-top: 16px; padding: 12px; background: #f1fdf6;
               border-left: 4px solid #107e3e; display: none; }
     .error { color: #bb0000; }
+    table  { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid #e5e5e5; font-size: 14px; }
+    th     { color: #6a6d70; font-weight: normal; }
+    input[type=text] { padding: 9px; width: 60%; border: 1px solid #89919a; border-radius: 6px; font-size: 15px; }
+    .muted { color: #6a6d70; font-size: 14px; }
   </style>
 </head>
 <body>
@@ -30,6 +35,18 @@
     <h2 id="greeting">Loading...</h2>
     <p id="email"></p>
     <p>Your permissions: <span id="scopes"></span></p>
+
+    <h3>Items</h3>
+    <!-- Hidden unless the user has the Admin scope -->
+    <div id="addArea" hidden>
+      <input id="newItem" type="text" maxlength="200" placeholder="New item">
+      <button id="addBtn">Add item</button>
+      <p id="addMsg" class="muted"></p>
+    </div>
+    <table>
+      <thead><tr><th>Item</th><th>Added by</th><th>When (UTC)</th></tr></thead>
+      <tbody id="items"><tr><td colspan="3" class="muted">Loading...</td></tr></tbody>
+    </table>
 
     <!-- Hidden unless the user has the Admin scope -->
     <div id="adminArea" hidden>
@@ -63,8 +80,51 @@
       // Show admin tools only to admins. The server still checks on every call.
       if (me.scopes.includes('Admin')) {
         $('adminArea').hidden = false;
+        $('addArea').hidden = false;
+      }
+      loadItems();
+    }
+
+    // The Approuter requires a CSRF token for changes (POST).
+    // A GET with "x-csrf-token: fetch" returns one in the response header.
+    let csrfToken = null;
+
+    async function loadItems() {
+      const res = await fetch('/api/items', { headers: { 'x-csrf-token': 'fetch' } });
+      csrfToken = res.headers.get('x-csrf-token');
+      const body = $('items');
+      body.innerHTML = '';
+      if (!res.ok) {
+        body.innerHTML = '<tr><td colspan="3" class="error">Could not load items (' + res.status + ').</td></tr>';
+        return;
+      }
+      const items = await res.json();
+      if (items.length === 0) {
+        body.innerHTML = '<tr><td colspan="3" class="muted">No items yet.</td></tr>';
+        return;
+      }
+      for (const it of items) {
+        const tr = document.createElement('tr');
+        for (const v of [it.text, it.created_by, (it.created_at || '').replace('T', ' ').slice(0, 19)]) {
+          const td = document.createElement('td');
+          td.textContent = v;          // textContent keeps user text from running as HTML
+          tr.appendChild(td);
+        }
+        body.appendChild(tr);
       }
     }
+
+    $('addBtn').addEventListener('click', async () => {
+      const text = $('newItem').value.trim();
+      if (!text) return;
+      const res = await fetch('/api/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
+        body: JSON.stringify({ text })
+      });
+      $('addMsg').textContent = res.ok ? 'Added.' : 'Could not add item (' + res.status + ').';
+      if (res.ok) { $('newItem').value = ''; loadItems(); }
+    });
 
     $('adminBtn').addEventListener('click', async () => {
       const res = await fetch('/api/admin');

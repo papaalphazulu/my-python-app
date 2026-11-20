@@ -17,6 +17,7 @@ modules:
           url: ${default-url}
     requires:
       - name: my-python-xsuaa
+      - name: my-python-hana
 
   - name: my-python-approuter
     type: approuter.nodejs
@@ -40,3 +41,9 @@ resources:
       service: xsuaa
       service-plan: application
       path: ./xs-security.json
+
+  - name: my-python-hana
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: hana
+      service-plan: schema
