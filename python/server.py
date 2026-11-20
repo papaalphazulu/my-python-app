@@ -1,4 +1,4 @@
-from flask import Flask, request, abort
+from flask import Flask, request, abort, jsonify
 from cfenv import AppEnv
 from sap import xssec
 
@@ -15,19 +15,30 @@ def get_context():
     except Exception:
         abort(401)
 
+def user_scopes(ctx):
+    return [s for s in ('Display', 'Admin') if ctx.check_local_scope(s)]
+
 @app.route('/')
 def hello():
     ctx = get_context()
     if not ctx.check_local_scope('Display'):
-        abort(403)                      # logged in, but no Viewer role
-    access = [s for s in ('Display', 'Admin') if ctx.check_local_scope(s)]
+        abort(403)
     return (f"Hello {ctx.get_given_name()} ({ctx.get_email()})! "
-            f"Your permissions: {', '.join(access)}. "
-            f"Try the admin page at /api/admin")
+            f"Your permissions: {', '.join(user_scopes(ctx))}.")
+
+@app.route('/me')
+def me():
+    """Who is logged in and what they may do, as JSON for the web page."""
+    ctx = get_context()
+    if not ctx.check_local_scope('Display'):
+        abort(403)
+    return jsonify(name=ctx.get_given_name(),
+                   email=ctx.get_email(),
+                   scopes=user_scopes(ctx))
 
 @app.route('/admin')
 def admin():
     ctx = get_context()
     if not ctx.check_local_scope('Admin'):
-        abort(403)                      # needs the Administrator role
+        abort(403)
     return "Admin area: only users with the Administrator role can see this page."

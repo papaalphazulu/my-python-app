@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Python App</title>
+  <style>
+    body   { font-family: Arial, sans-serif; background: #f5f6f7; margin: 0; color: #32363a; }
+    header { background: #0a6ed1; color: #fff; padding: 14px 24px;
+             display: flex; justify-content: space-between; align-items: center; }
+    header a { color: #fff; }
+    main   { max-width: 720px; margin: 32px auto; background: #fff; border-radius: 8px;
+             padding: 24px 32px; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+    .tag   { display: inline-block; background: #e5f0fa; color: #0a6ed1; border-radius: 12px;
+             padding: 2px 10px; margin-right: 6px; font-size: 13px; }
+    button { background: #0a6ed1; color: #fff; border: 0; border-radius: 6px;
+             padding: 10px 18px; font-size: 15px; cursor: pointer; }
+    #result { margin-top: 16px; padding: 12px; background: #f1fdf6;
+              border-left: 4px solid #107e3e; display: none; }
+    .error { color: #bb0000; }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>My Python App</strong>
+    <a href="/do/logout">Log out</a>
+  </header>
+
+  <main>
+    <h2 id="greeting">Loading...</h2>
+    <p id="email"></p>
+    <p>Your permissions: <span id="scopes"></span></p>
+
+    <!-- Hidden unless the user has the Admin scope -->
+    <div id="adminArea" hidden>
+      <h3>Administrator tools</h3>
+      <button id="adminBtn">Open admin area</button>
+      <div id="result"></div>
+    </div>
+  </main>
+
+  <script>
+    const $ = id => document.getElementById(id);
+
+    async function loadUser() {
+      const res = await fetch('/api/me');
+      if (res.status === 403) {
+        $('greeting').textContent = 'You are signed in, but you do not have access to this app.';
+        $('greeting').className = 'error';
+        $('email').textContent = 'Ask an administrator to assign you the MyPythonApp_Viewer role collection.';
+        return;
+      }
+      if (!res.ok) {
+        $('greeting').textContent = 'Something went wrong (' + res.status + ').';
+        $('greeting').className = 'error';
+        return;
+      }
+      const me = await res.json();
+      $('greeting').textContent = 'Hello ' + me.name + '!';
+      $('email').textContent = me.email;
+      $('scopes').innerHTML = me.scopes.map(s => '<span class="tag">' + s + '</span>').join('');
+
+      // Show admin tools only to admins. The server still checks on every call.
+      if (me.scopes.includes('Admin')) {
+        $('adminArea').hidden = false;
+      }
+    }
+
+    $('adminBtn').addEventListener('click', async () => {
+      const res = await fetch('/api/admin');
+      const box = $('result');
+      box.style.display = 'block';
+      box.textContent = res.ok ? await res.text() : 'Access denied (' + res.status + ').';
+    });
+
+    loadUser();
+  </script>
+</body>
+</html>
