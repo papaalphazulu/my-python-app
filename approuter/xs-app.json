@@ -1,12 +1,21 @@
 {
   "welcomeFile": "/api/",
   "authenticationMethod": "route",
+  "logout": { "logoutEndpoint": "/do/logout" },
   "routes": [
+    {
+      "source": "^/api/admin(.*)$",
+      "target": "/admin$1",
+      "destination": "backend",
+      "authenticationType": "xsuaa",
+      "scope": "$XSAPPNAME.Admin"
+    },
     {
       "source": "^/api/(.*)$",
       "target": "/$1",
       "destination": "backend",
-      "authenticationType": "xsuaa"
+      "authenticationType": "xsuaa",
+      "scope": "$XSAPPNAME.Display"
     }
   ]
 }
